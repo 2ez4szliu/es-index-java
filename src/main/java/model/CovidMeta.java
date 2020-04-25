@@ -5,6 +5,7 @@ import java.util.List;
 public class CovidMeta {
 
     private String id;
+    private String paperId;
     private String sha;
     private String title;
     private List<String> textAbstract;
@@ -68,13 +69,22 @@ public class CovidMeta {
         this.bodyText = bodyText;
     }
 
+    public String getPaperId() {
+        return paperId;
+    }
+
+    public void setPaperId(String paperId) {
+        this.paperId = paperId;
+    }
+
     @Override
     public String toString() {
         return "CovidMeta{" +
                 "id='" + id + '\'' +
+                ", paperId='" + paperId + '\'' +
                 ", sha='" + sha + '\'' +
                 ", title='" + title + '\'' +
-                ", textAbstract='" + textAbstract + '\'' +
+                ", textAbstract=" + textAbstract +
                 ", authors=" + authors +
                 ", bodyText=" + bodyText +
                 ", publishTime='" + publishTime + '\'' +

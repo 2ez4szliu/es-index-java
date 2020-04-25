@@ -1,4 +1,4 @@
-package utils;
+package parser;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -13,14 +13,61 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-public class Parser {
+public class ParserThread implements Runnable {
 
 
     private static final String INPUT_ROOT = "data";
     private static final String OUTPUT_ROOT = "processed";
+
+    private String name;
+    private Source source;
+    private Parse parse;
+
+    public ParserThread() {
+
+    }
+
+    public ParserThread(String name, Source source, Parse parse) {
+        this.name = name;
+        this.source = source;
+        this.parse = parse;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Source getSource() {
+        return source;
+    }
+
+    public void setSource(Source source) {
+        this.source = source;
+    }
+
+    public Parse getParse() {
+        return parse;
+    }
+
+    public void setParse(Parse parse) {
+        this.parse = parse;
+    }
+
+    public void parseJsonFile() {
+        if (name == null || source == null || parse == null)
+            throw new IllegalArgumentException("Missing name, source or parse.");
+        try {
+            parseJsonFile(name, source, parse);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     /**
      * This function parse a json file and output results according to source and parse type
@@ -30,7 +77,7 @@ public class Parser {
      * @param parse  parse type of the file(pdf/xml/none)
      * @throws IOException
      */
-    public static void parseJsonFile(String name, Source source, Parse parse) throws IOException {
+    public void parseJsonFile(String name, Source source, Parse parse) throws IOException {
 //        long start = System.currentTimeMillis();
         String suffix = getPathSuffix(name, source, parse);
 
@@ -43,7 +90,7 @@ public class Parser {
         JsonObject jsonObject = gson.fromJson(content, JsonObject.class);
 
         String paper_id = jsonObject.get("paper_id").getAsString();
-        covidMeta.setSha(paper_id);
+        covidMeta.setPaperId(paper_id);
 
         JsonObject metadata = jsonObject.get("metadata").getAsJsonObject();
         String title = metadata.get("title").getAsString();
@@ -58,14 +105,16 @@ public class Parser {
         }
         covidMeta.setAuthors(authors);
 
-        JsonArray abstractArray = jsonObject.get("abstract").getAsJsonArray();
-        List<String> textAbstract = new ArrayList<>();
-        for (int i = 0; i < abstractArray.size(); i++) {
-            JsonObject _abstract = abstractArray.get(i).getAsJsonObject();
-            String text = _abstract.get("text").getAsString();
-            textAbstract.add(text);
+        if (parse == Parse.PDF) { // PMC json file has no abstract field
+            JsonArray abstractArray = jsonObject.get("abstract").getAsJsonArray();
+            List<String> textAbstract = new ArrayList<>();
+            for (int i = 0; i < abstractArray.size(); i++) {
+                JsonObject _abstract = abstractArray.get(i).getAsJsonObject();
+                String text = _abstract.get("text").getAsString();
+                textAbstract.add(text);
+            }
+            covidMeta.setTextAbstract(textAbstract);
         }
-        covidMeta.setTextAbstract(textAbstract);
 
         JsonArray bodyTextArray = jsonObject.get("body_text").getAsJsonArray();
         List<String> bodyText = new ArrayList<>();
@@ -84,7 +133,7 @@ public class Parser {
 //        System.out.println(end - start);
     }
 
-    private static String parseAuthorName(JsonObject author) {
+    private String parseAuthorName(JsonObject author) {
         if (author == null || author.isJsonNull())
             return null;
         String first = author.get("first").getAsString();
@@ -101,39 +150,12 @@ public class Parser {
         return name;
     }
 
-    private static String getPathSuffix(String name, Source source, Parse parse) {
+    private String getPathSuffix(String name, Source source, Parse parse) {
         return source.getPath() + File.separator + parse.getPath() + File.separator + name;
     }
 
-    public static List<String> getAllFileNames(String root, Source source, Parse parse) {
-        String suffix = source.getPath() + File.separator + parse.getPath();
-        File folder = new File(root + File.separator + suffix);
-        File[] files = folder.listFiles();
-        List<String> result = new ArrayList<>();
-        for (File file : files) {
-            result.add(file.getName());
-        }
-        return result;
-    }
-
-    public static void parseAllFilesInFolder(Source source, Parse parse) throws IOException {
-        long start = System.currentTimeMillis();
-        List<String> names = getAllFileNames(INPUT_ROOT, source, parse);
-        Collections.sort(names);
-        for (String name: names) {
-            parseJsonFile(name, source, parse);
-        }
-        long end = System.currentTimeMillis();
-        System.out.println(end - start);
-    }
-
-    public static void main(String[] args) {
-        Source source = Source.BIORXIV;
-        Parse parse = Parse.PDF;
-        try {
-            parseAllFilesInFolder(source, parse);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    @Override
+    public void run() {
+        parseJsonFile();
     }
 }
