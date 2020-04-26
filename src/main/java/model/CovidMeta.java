@@ -8,10 +8,12 @@ public class CovidMeta {
     private String paperId;
     private String sha;
     private String title;
+    private String pmcid;
     private List<String> textAbstract;
     private List<String> authors; //full name of authors
     private List<String> bodyText; //paragraphs
     private String publishTime;
+    private String url;
 
     public String getId() {
         return id;
@@ -75,6 +77,22 @@ public class CovidMeta {
 
     public void setPaperId(String paperId) {
         this.paperId = paperId;
+    }
+
+    public String getPmcid() {
+        return pmcid;
+    }
+
+    public void setPmcid(String pmcid) {
+        this.pmcid = pmcid;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
     }
 
     @Override
