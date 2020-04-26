@@ -50,6 +50,15 @@ public class MetadataCSVParser {
                 .build();
     }
 
+    public static void main(String[] args) {
+        MetadataCSVParser parser = new MetadataCSVParser();
+        try {
+            parser.parseCSV();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void parseCSV() throws IOException {
 
         File csvFile = new File(CSV_FILE_PATH);
@@ -71,12 +80,4 @@ public class MetadataCSVParser {
         pool.shutdown();
     }
 
-    public static void main(String[] args) {
-        MetadataCSVParser parser = new MetadataCSVParser();
-        try {
-            parser.parseCSV();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 }

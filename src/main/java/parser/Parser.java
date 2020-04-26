@@ -19,47 +19,6 @@ public class Parser {
     public Parser() {
     }
 
-    public List<String> getAllFileNames(String root, Source source, Parse parse) {
-        String suffix = source.getPath() + File.separator + parse.getPath();
-        File folder = new File(root + File.separator + suffix);
-        File[] files = folder.listFiles();
-        List<String> result = new ArrayList<>();
-        for (File file : files) {
-            result.add(file.getName());
-        }
-        return result;
-    }
-
-    public void parseAllFilesInFolder(Source source, Parse parse) throws IOException {
-        //Make use of thread pool to manage thread's lifecycle
-        List<String> names = getAllFileNames(INPUT_ROOT, source, parse);
-        int numberOfNames = names.size();
-        int count = numberOfNames;
-        int id = 0;
-        ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
-        while (count > 0 && id < numberOfNames) {
-            String name = names.get(id);
-            count--;
-            id++;
-            ParserThread parserThread = new ParserThread(name, source, parse);
-            pool.execute(parserThread);
-        }
-        pool.shutdown();
-
-    }
-
-    public static void makeDirectories() {
-        for (Source source : Source.values())
-            for (Parse parse : Parse.values()) {
-                //BIOXRIV has no pmc parse
-                if (source == Source.BIORXIV && parse == Parse.PMC)
-                    continue;
-                new File(OUTPUT_ROOT + File.separator +
-                        source.getPath() + File.separator +
-                        parse.getPath()).mkdirs();
-            }
-    }
-
     /**
      * Main program that parses all json files in original data folders
      * only keep the field that we need to build index
@@ -123,4 +82,46 @@ public class Parser {
             e.printStackTrace();
         }
     }
+
+    public List<String> getAllFileNames(String root, Source source, Parse parse) {
+        String suffix = source.getPath() + File.separator + parse.getPath();
+        File folder = new File(root + File.separator + suffix);
+        File[] files = folder.listFiles();
+        List<String> result = new ArrayList<>();
+        for (File file : files) {
+            result.add(file.getName());
+        }
+        return result;
+    }
+
+    public void parseAllFilesInFolder(Source source, Parse parse) throws IOException {
+        //Make use of thread pool to manage thread's lifecycle
+        List<String> names = getAllFileNames(INPUT_ROOT, source, parse);
+        int numberOfNames = names.size();
+        int count = numberOfNames;
+        int id = 0;
+        ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+        while (count > 0 && id < numberOfNames) {
+            String name = names.get(id);
+            count--;
+            id++;
+            ParserThread parserThread = new ParserThread(name, source, parse);
+            pool.execute(parserThread);
+        }
+        pool.shutdown();
+
+    }
+
+    public static void makeDirectories() {
+        for (Source source : Source.values())
+            for (Parse parse : Parse.values()) {
+                //BIOXRIV has no pmc parse
+                if (source == Source.BIORXIV && parse == Parse.PMC)
+                    continue;
+                new File(OUTPUT_ROOT + File.separator +
+                        source.getPath() + File.separator +
+                        parse.getPath()).mkdirs();
+            }
+    }
+
 }

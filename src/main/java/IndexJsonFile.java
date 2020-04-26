@@ -1,7 +1,6 @@
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.stream.JsonReader;
 import model.CovidMeta;
+import org.apache.commons.io.FileUtils;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -14,13 +13,10 @@ import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import utils.DateConverter;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
-import java.util.concurrent.ExecutionException;
 
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
@@ -31,14 +27,21 @@ public class IndexJsonFile {
     String indexName, indexTypeName;
     Client client = null;
 
+    public static final String PAPER_ID = "paperId";
     public static final String SHA = "sha";
+    public static final String PMCID = "pmcid";
     public static final String TITLE = "title";
     public static final String ABSTRACT = "textAbstract";
+    public static final String BODY_TEXT = "bodyText";
     public static final String AUTHORS = "authors";
     public static final String PUBLISH_TIME = "publishTime";
+    public static final String URL = "url";
 
     public static final String SAMPLE_INDEX_NAME = "covid_sample_index";
-    public static final String FULL_INDEX_NAME = "covid_full_index";
+    public static final String FINAL_INDEX_NAME = "covid_index";
+
+    public static final String INDEX_DATA_ROOT = "index-data";
+    public static final String JSON_SUFFIX = ".json";
 
 
     public static void main(String[] args) {
@@ -60,7 +63,7 @@ public class IndexJsonFile {
 
 
     public IndexJsonFile() {
-        indexName = SAMPLE_INDEX_NAME;
+        indexName = FINAL_INDEX_NAME;
         indexTypeName = "_doc";
     }
 
@@ -79,19 +82,20 @@ public class IndexJsonFile {
                             new TransportAddress(InetAddress.getByName("localhost"), 9300));
 
             // Analysis setting
+            // @formatter:off
             XContentBuilder analysisBuilder = XContentFactory.jsonBuilder()
                     .startObject()
                         .startObject("analysis")
                             .startObject("filter")
                                 .startObject("filter_stemmer")
-                                    .field("type","porter_stem")
-                                    .field("language","English")
+                                    .field("type", "porter_stem")
+                                    .field("language", "English")
                                 .endObject()
                             .endObject()
                             .startObject("analyzer")
                                 .startObject("my-analyzer")
-                                    .field("tokenizer","standard")
-                                    .array("filter","stop","lowercase","filter_stemmer")
+                                    .field("tokenizer", "standard")
+                                    .array("filter", "stop", "lowercase", "filter_stemmer")
                                 .endObject()
                             .endObject()
                         .endObject()
@@ -104,26 +108,40 @@ public class IndexJsonFile {
             XContentBuilder mappingBuilder = XContentFactory.jsonBuilder()
                     .startObject()
                         .startObject("properties")
+                            .startObject("paperId")
+                                .field("type", "text")
+                            .endObject()
                             .startObject("title")
-                                .field("type","text")
+                                .field("type", "text")
                                 .field("analyzer", "my-analyzer")
                             .endObject()
                             .startObject("sha")
                                 .field("type", "text")
                             .endObject()
+                            .startObject("pmcid")
+                                .field("type", "text")
+                            .endObject()
                             .startObject("textAbstract")
-                                .field("type","text")
+                                .field("type", "text")
                                 .field("analyzer", "my-analyzer")
                             .endObject()
                             .startObject("authors")
                                 .field("type", "text")
                                 .field("analyzer", "my-analyzer")
                             .endObject()
+                            .startObject("textBody")
+                                .field("type", "text")
+                                .field("analyzer", "my-analyzer")
+                            .endObject()
                             .startObject("publishTime")
-                                .field("type", "long")
+                                .field("type", "text")
+                            .endObject()
+                            .startObject("url")
+                                .field("type", "text")
                             .endObject()
                         .endObject()
                     .endObject();
+            // @formatter:on
             client.admin().indices()
                     .preparePutMapping(indexName)
                     .setType(indexTypeName)
@@ -142,35 +160,31 @@ public class IndexJsonFile {
 
         BulkRequestBuilder bulkRequest = client.prepareBulk();
 
-        File jsonFilePath = new File("/data/covid_metadata.json");
         int count = 0, noOfBatch = 1;
+        String[] fileNames = new File(INDEX_DATA_ROOT).list();
 
-        //initialize jsonReader class by passing reader
-        JsonReader jsonReader = new JsonReader(
-                new InputStreamReader(
-                        new FileInputStream(jsonFilePath), StandardCharsets.UTF_8));
-
-        Gson gson = new GsonBuilder().create();
-
-        jsonReader.beginArray(); //start of json array
-        int numberOfRecords = 1;
-        while (jsonReader.hasNext()) { //next json array element
-            CovidMeta document = gson.fromJson(jsonReader, CovidMeta.class);
-            //do something real
+        int numberOfRecords = 0;
+        for (int i = 0; i < 100; i++) {
+            String name = fileNames[i];
+            CovidMeta document = getJsonObj(name);
             try {
                 XContentBuilder xContentBuilder = jsonBuilder()
                         .startObject()
-                            .field(SHA, document.getSha())
-                            .field(TITLE, document.getTitle())
-                            .field(ABSTRACT, document.getTextAbstract())
-                            .field(AUTHORS, document.getAuthors())
-                            .field(PUBLISH_TIME, DateConverter.dateToLong(document.getPublishTime()))
+                        .field(PAPER_ID, document.getPaperId())
+                        .field(SHA, document.getSha())
+                        .field(PMCID, document.getPmcid())
+                        .field(TITLE, document.getTitle())
+                        .field(ABSTRACT, document.getTextAbstract())
+                        .field(AUTHORS, document.getAuthors())
+                        .field(BODY_TEXT, document.getBodyText())
+                        .field(PUBLISH_TIME, DateConverter.parseDateStr(document.getPublishTime()))
+                        .field(URL, document.getUrl())
                         .endObject();
 
                 bulkRequest.add(client.prepareIndex(indexName, indexTypeName, String.valueOf(numberOfRecords))
                         .setSource(xContentBuilder));
 
-                if (count == 500) {
+                if (count == 5000) {
                     addDocumentToESCluser(bulkRequest, noOfBatch, count);
                     noOfBatch++;
                     count = 0;
@@ -182,7 +196,7 @@ public class IndexJsonFile {
             numberOfRecords++;
             count++;
         }
-        jsonReader.endArray();
+
         if (count != 0) { //add remaining documents to ES
             addDocumentToESCluser(bulkRequest, noOfBatch, count);
         }
@@ -214,6 +228,14 @@ public class IndexJsonFile {
         } else {
             System.out.println("Bulk Indexing Completed for batch : " + noOfBatch);
         }
+    }
+
+    private CovidMeta getJsonObj(String jsonFileName) throws IOException {
+        String jsonFilePath = INDEX_DATA_ROOT + File.separator + jsonFileName;
+        File jsonFile = new File(jsonFilePath);
+        String content = FileUtils.readFileToString(jsonFile, StandardCharsets.UTF_8);
+        Gson gson = new Gson();
+        return gson.fromJson(content, CovidMeta.class);
     }
 
     public void closeTransportClient() {

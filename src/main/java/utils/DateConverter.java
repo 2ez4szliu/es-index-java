@@ -7,8 +7,9 @@ import java.util.Map;
 
 public class DateConverter {
 
-    private static Map<String, Integer> monthAbbreviationToNumber = new HashMap<>();
+    public static Map<String, Integer> monthAbbreviationToNumber = new HashMap<>();
     public static SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+    public static String DEFAULT_DATE = "2019-01-01";
 
     static {
         monthAbbreviationToNumber.put("Jan", 0);
@@ -23,6 +24,20 @@ public class DateConverter {
         monthAbbreviationToNumber.put("Oct", 9);
         monthAbbreviationToNumber.put("Nov", 10);
         monthAbbreviationToNumber.put("Dec", 11);
+
+    }
+
+    public static String parseDateStr(String input) {
+        if (input == null || input.isEmpty())
+            return DEFAULT_DATE;
+        String[] ymd = input.split("-");
+        if (ymd.length == 3)
+            return input;
+        else if (ymd.length == 2) {
+            return input + "-01";
+        } else {
+            return input + "-01-01";
+        }
 
     }
 
@@ -55,8 +70,7 @@ public class DateConverter {
     }
 
     public static void main(String[] args) {
-        String date = "2006 Jan 20";
-        System.out.println(dateToLong(date));
-        System.out.println(longToFormattedDate(dateToLong(date)));
+        String date = "2006-08";
+        System.out.println(parseDateStr(date));
     }
 }
