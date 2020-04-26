@@ -43,6 +43,8 @@ public class IndexJsonFile {
     public static final String INDEX_DATA_ROOT = "index-data";
     public static final String JSON_SUFFIX = ".json";
 
+    public static final int BULK_REQUEST_SIZE = 1000;
+
 
     public static void main(String[] args) {
         IndexJsonFile esExample = new IndexJsonFile();
@@ -164,7 +166,7 @@ public class IndexJsonFile {
         String[] fileNames = new File(INDEX_DATA_ROOT).list();
 
         int numberOfRecords = 0;
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < fileNames.length; i++) {
             String name = fileNames[i];
             CovidMeta document = getJsonObj(name);
             try {
@@ -184,8 +186,9 @@ public class IndexJsonFile {
                 bulkRequest.add(client.prepareIndex(indexName, indexTypeName, String.valueOf(numberOfRecords))
                         .setSource(xContentBuilder));
 
-                if (count == 5000) {
+                if (count == BULK_REQUEST_SIZE) {
                     addDocumentToESCluser(bulkRequest, noOfBatch, count);
+                    bulkRequest = client.prepareBulk();
                     noOfBatch++;
                     count = 0;
                 }
