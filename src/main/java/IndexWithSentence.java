@@ -1,4 +1,6 @@
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import model.CovidMeta;
 import org.apache.commons.io.FileUtils;
 import org.elasticsearch.action.bulk.BulkItemResponse;
@@ -10,7 +12,6 @@ import org.elasticsearch.common.transport.TransportAddress;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
-import utils.DateConverter;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,34 +21,30 @@ import java.util.Iterator;
 
 import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 
-
-public class IndexJsonFile {
-
-
+public class IndexWithSentence {
     String indexName, indexTypeName;
     Client client = null;
 
-    public static final String PAPER_ID = "paperId";
-    public static final String SHA = "sha";
-    public static final String PMCID = "pmcid";
-    public static final String TITLE = "title";
-    public static final String ABSTRACT = "textAbstract";
-    public static final String BODY_TEXT = "bodyText";
-    public static final String AUTHORS = "authors";
-    public static final String PUBLISH_TIME = "publishTime";
-    public static final String URL = "url";
+    public static final String ID = "id";
+    public static final String TEXT = "text";
+    public static final String VECTOR = "vector";
 
-    public static final String FINAL_INDEX_NAME = "covid_index";
+    public static final String EMBEDDING_INDEX_NAME = "covid_embedding_index";
 
-    public static final String INDEX_DATA_ROOT = "index-data";
-    public static final String JSON_SUFFIX = ".json";
+    public static final String INDEX_DATA_ROOT = "sentence_embedding-data";
+    public static final String JSON_SUFFIX = ".json.em.josn";
 
-    public static final int BULK_REQUEST_SIZE = 1000;
-
+    public static final int DIMENSION = 50;
+    public static final int BULK_REQUEST_SIZE = 5000;
 
     public static void main(String[] args) {
-        IndexJsonFile esExample = new IndexJsonFile();
+        IndexWithSentence esExample = new IndexWithSentence();
         try {
+//            CsvMapper mapper = new CsvMapper();
+//            mapper.enable(CsvParser.Feature.WRAP_AS_ARRAY);
+//            File file = new File("data/cord_19_embeddings_4_17/cord_19_embeddings_4_17.csv");
+//            MappingIterator<float[]> it = mapper.readerFor(float[].class).readValues(file);
+//            System.out.println(Arrays.toString(it.next()));
             esExample.initEStransportClinet(); //init transport client
             long start = System.currentTimeMillis();
             esExample.JsonBulkImport(); //index multiple  document
@@ -63,8 +60,8 @@ public class IndexJsonFile {
     }
 
 
-    public IndexJsonFile() {
-        indexName = FINAL_INDEX_NAME;
+    public IndexWithSentence() {
+        indexName = EMBEDDING_INDEX_NAME;
         indexTypeName = "_doc";
     }
 
@@ -74,7 +71,7 @@ public class IndexJsonFile {
      */
     public boolean initEStransportClinet() {
         try {
-            //connect to elastic cloud
+            // un-command this, if you have multiple node
             Settings esSettings = Settings.builder()
                     .put("cluster.name", "cosi132a")
                     .build();
@@ -109,36 +106,16 @@ public class IndexJsonFile {
             XContentBuilder mappingBuilder = XContentFactory.jsonBuilder()
                     .startObject()
                         .startObject("properties")
-                            .startObject("paperId")
+                            .startObject("id")
                                 .field("type", "text")
                             .endObject()
-                            .startObject("title")
+                            .startObject("text")
                                 .field("type", "text")
                                 .field("analyzer", "my-analyzer")
                             .endObject()
-                            .startObject("sha")
-                                .field("type", "text")
-                            .endObject()
-                            .startObject("pmcid")
-                                .field("type", "text")
-                            .endObject()
-                            .startObject("textAbstract")
-                                .field("type", "text")
-                                .field("analyzer", "my-analyzer")
-                            .endObject()
-                            .startObject("authors")
-                                .field("type", "text")
-                                .field("analyzer", "my-analyzer")
-                            .endObject()
-                            .startObject("textBody")
-                                .field("type", "text")
-                                .field("analyzer", "my-analyzer")
-                            .endObject()
-                            .startObject("publishTime")
-                                .field("type", "text")
-                            .endObject()
-                            .startObject("url")
-                                .field("type", "text")
+                            .startObject("vector")
+                                .field("type", "dense_vector")
+                                .field("dims", DIMENSION)
                             .endObject()
                         .endObject()
                     .endObject();
@@ -163,40 +140,42 @@ public class IndexJsonFile {
 
         int count = 0, noOfBatch = 1;
         String[] fileNames = new File(INDEX_DATA_ROOT).list();
-
         int numberOfRecords = 0;
+        Gson gson = new Gson();
         for (int i = 0; i < fileNames.length; i++) {
-            String name = fileNames[i];
-            CovidMeta document = getJsonObj(name);
-            try {
-                XContentBuilder xContentBuilder = jsonBuilder()
-                        .startObject()
-                        .field(PAPER_ID, document.getPaperId())
-                        .field(SHA, document.getSha())
-                        .field(PMCID, document.getPmcid())
-                        .field(TITLE, document.getTitle())
-                        .field(ABSTRACT, document.getTextAbstract())
-                        .field(AUTHORS, document.getAuthors())
-                        .field(BODY_TEXT, document.getBodyText())
-                        .field(PUBLISH_TIME, DateConverter.parseDateStr(document.getPublishTime()))
-                        .field(URL, document.getUrl())
-                        .endObject();
+            String name = INDEX_DATA_ROOT + File.separator + i + JSON_SUFFIX;
+            File file = new File(name);
+            String content = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
+            JsonObject jsonObject = gson.fromJson(content, JsonObject.class);
+            JsonArray sentences = jsonObject.get(i + "").getAsJsonArray();
+            for (int j = 0; j < sentences.size(); j++) {
+                JsonObject obj = sentences.get(j).getAsJsonObject();
+                String sentence = obj.get("sentence").getAsString();
+                float[] vector = gson.fromJson(obj.get("vector"), float[].class);
+                try {
+                    XContentBuilder xContentBuilder = jsonBuilder()
+                            .startObject()
+                            .field(ID, i)
+                            .field(TEXT, sentence)
+                            .field(VECTOR, vector)
+                            .endObject();
 
-                bulkRequest.add(client.prepareIndex(indexName, indexTypeName, String.valueOf(numberOfRecords))
-                        .setSource(xContentBuilder));
+                    bulkRequest.add(client.prepareIndex(indexName, indexTypeName, String.valueOf(numberOfRecords))
+                            .setSource(xContentBuilder));
 
-                if (count == BULK_REQUEST_SIZE) {
-                    addDocumentToESCluser(bulkRequest, noOfBatch, count);
-                    bulkRequest = client.prepareBulk();
-                    noOfBatch++;
-                    count = 0;
+                    if (count == BULK_REQUEST_SIZE) {
+                        addDocumentToESCluser(bulkRequest, noOfBatch, count);
+                        bulkRequest = client.prepareBulk();
+                        noOfBatch++;
+                        count = 0;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    //skip records if wrong date in input file
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-                //skip records if wrong date in input file
+                numberOfRecords++;
+                count++;
             }
-            numberOfRecords++;
-            count++;
         }
 
         if (count != 0) { //add remaining documents to ES
@@ -245,5 +224,6 @@ public class IndexJsonFile {
             client.close();
         }
     }
+
 
 }

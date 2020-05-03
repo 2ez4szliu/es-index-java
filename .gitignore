@@ -3,3 +3,5 @@ data/
 processed/
 target/
 index-data/
+sentence_embedding-data
+src/main/resources
