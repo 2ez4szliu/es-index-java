@@ -29,7 +29,7 @@ public class IndexWithSentence {
     public static final String TEXT = "text";
     public static final String VECTOR = "vector";
 
-    public static final String EMBEDDING_INDEX_NAME = "covid_embedding_index";
+    public static final String EMBEDDING_INDEX_NAME = "sentence_embedding_index";
 
     public static final String INDEX_DATA_ROOT = "sentence_embedding-data";
     public static final String JSON_SUFFIX = ".json.em.josn";
@@ -151,7 +151,7 @@ public class IndexWithSentence {
             for (int j = 0; j < sentences.size(); j++) {
                 JsonObject obj = sentences.get(j).getAsJsonObject();
                 String sentence = obj.get("sentence").getAsString();
-                float[] vector = gson.fromJson(obj.get("vector"), float[].class);
+                double[] vector = gson.fromJson(obj.get("vector"), double[].class);
                 try {
                     XContentBuilder xContentBuilder = jsonBuilder()
                             .startObject()
@@ -209,14 +209,6 @@ public class IndexWithSentence {
         } else {
             System.out.println("Bulk Indexing Completed for batch : " + noOfBatch);
         }
-    }
-
-    private CovidMeta getJsonObj(String jsonFileName) throws IOException {
-        String jsonFilePath = INDEX_DATA_ROOT + File.separator + jsonFileName;
-        File jsonFile = new File(jsonFilePath);
-        String content = FileUtils.readFileToString(jsonFile, StandardCharsets.UTF_8);
-        Gson gson = new Gson();
-        return gson.fromJson(content, CovidMeta.class);
     }
 
     public void closeTransportClient() {
