@@ -166,7 +166,7 @@ public class IndexJsonFile {
 
         int numberOfRecords = 0;
         for (int i = 0; i < fileNames.length; i++) {
-            String name = fileNames[i];
+            String name = i + JSON_SUFFIX;
             CovidMeta document = getJsonObj(name);
             try {
                 XContentBuilder xContentBuilder = jsonBuilder()
