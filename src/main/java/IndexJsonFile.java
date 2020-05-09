@@ -27,6 +27,7 @@ public class IndexJsonFile {
     String indexName, indexTypeName;
     Client client = null;
 
+    public static final String ID = "id";
     public static final String PAPER_ID = "paperId";
     public static final String SHA = "sha";
     public static final String PMCID = "pmcid";
@@ -109,6 +110,9 @@ public class IndexJsonFile {
             XContentBuilder mappingBuilder = XContentFactory.jsonBuilder()
                     .startObject()
                         .startObject("properties")
+                            .startObject("id")
+                                .field("type", "text")
+                            .endObject()
                             .startObject("paperId")
                                 .field("type", "text")
                             .endObject()
@@ -135,7 +139,8 @@ public class IndexJsonFile {
                                 .field("analyzer", "my-analyzer")
                             .endObject()
                             .startObject("publishTime")
-                                .field("type", "text")
+                                .field("type", "date")
+                                .field("format", "yyyy-MM-dd")
                             .endObject()
                             .startObject("url")
                                 .field("type", "text")
@@ -171,6 +176,7 @@ public class IndexJsonFile {
             try {
                 XContentBuilder xContentBuilder = jsonBuilder()
                         .startObject()
+                        .field(ID, count + "")
                         .field(PAPER_ID, document.getPaperId())
                         .field(SHA, document.getSha())
                         .field(PMCID, document.getPmcid())

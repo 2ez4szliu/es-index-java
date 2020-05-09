@@ -34,17 +34,12 @@ public class IndexWithSentence {
     public static final String INDEX_DATA_ROOT = "sentence_embedding-data";
     public static final String JSON_SUFFIX = ".json.em.josn";
 
-    public static final int DIMENSION = 50;
+    public static final int DIMENSION = 300;
     public static final int BULK_REQUEST_SIZE = 5000;
 
     public static void main(String[] args) {
         IndexWithSentence esExample = new IndexWithSentence();
         try {
-//            CsvMapper mapper = new CsvMapper();
-//            mapper.enable(CsvParser.Feature.WRAP_AS_ARRAY);
-//            File file = new File("data/cord_19_embeddings_4_17/cord_19_embeddings_4_17.csv");
-//            MappingIterator<float[]> it = mapper.readerFor(float[].class).readValues(file);
-//            System.out.println(Arrays.toString(it.next()));
             esExample.initEStransportClinet(); //init transport client
             long start = System.currentTimeMillis();
             esExample.JsonBulkImport(); //index multiple  document
@@ -71,7 +66,6 @@ public class IndexWithSentence {
      */
     public boolean initEStransportClinet() {
         try {
-            // un-command this, if you have multiple node
             Settings esSettings = Settings.builder()
                     .put("cluster.name", "cosi132a")
                     .build();
