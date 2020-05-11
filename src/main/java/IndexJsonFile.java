@@ -176,7 +176,7 @@ public class IndexJsonFile {
             try {
                 XContentBuilder xContentBuilder = jsonBuilder()
                         .startObject()
-                        .field(ID, count + "")
+                        .field(ID, numberOfRecords + "")
                         .field(PAPER_ID, document.getPaperId())
                         .field(SHA, document.getSha())
                         .field(PMCID, document.getPmcid())
