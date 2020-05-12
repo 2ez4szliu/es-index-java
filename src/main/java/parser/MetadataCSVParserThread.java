@@ -47,6 +47,13 @@ public class MetadataCSVParserThread implements Runnable {
         this.row = row;
     }
 
+    /**
+     * Update the pdf parse data using a row in the csv file
+     * @param row a row in csv file
+     * @param covidMeta pdf-parsed data, representing same documents as row
+     * @param id the id of the doc(sha)
+     * @throws IOException
+     */
     private void updatePDFParse(Map<String, String> row, CovidMeta covidMeta, int id) throws IOException {
         covidMeta.setSha(row.get("sha"));
         covidMeta.setPmcid(row.get("pmcid"));
@@ -59,6 +66,15 @@ public class MetadataCSVParserThread implements Runnable {
         writer.flush();
         writer.close();
     }
+
+    /**
+     *
+     * Update the pmc parse data using a row in the csv file
+     * @param row a row in csv file
+     * @param covidMeta pmc-parsed data, representing same documents as row
+     * @param id the id of the doc(pmcid)
+     * @throws IOException
+     */
 
     private void updatePMCParse(Map<String, String> row, CovidMeta covidMeta, int id) throws IOException {
         covidMeta.setSha(row.get("sha"));
@@ -78,6 +94,14 @@ public class MetadataCSVParserThread implements Runnable {
 
     }
 
+    /**
+     * Get a CovidMeta Object from a given source and parse format
+     * @param id id of the object(pmcid or sha)
+     * @param source source
+     * @param parse pdf/pmc
+     * @return a covidMeta object of the document
+     * @throws IOException
+     */
     private CovidMeta getJsonObjFromSource(String id, Source source, Parse parse) throws IOException {
         String jsonFilePath = JSON_DATA_ROOT + File.separator +
                 source.getPath() + File.separator

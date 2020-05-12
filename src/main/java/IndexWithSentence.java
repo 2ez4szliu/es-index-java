@@ -1,7 +1,6 @@
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import model.CovidMeta;
 import org.apache.commons.io.FileUtils;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
@@ -154,7 +153,8 @@ public class IndexWithSentence {
                             .field(VECTOR, vector)
                             .endObject();
 
-                    bulkRequest.add(client.prepareIndex(indexName, indexTypeName, String.valueOf(numberOfRecords))
+                    bulkRequest.add(client.prepareIndex(indexName, indexTypeName,
+                            String.valueOf(numberOfRecords))
                             .setSource(xContentBuilder));
 
                     if (count == BULK_REQUEST_SIZE) {
